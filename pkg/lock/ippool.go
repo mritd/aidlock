@@ -21,15 +21,9 @@ import (
 	"github.com/robfig/cron"
 )
 
-const apiTpl = "https://proxy.horocn.com/api/proxies?order_id=%s&num=%d&format=json&line_separator=unix"
-
 type IP struct {
-	Host        string
-	Port        string
-	Country_cn  string
-	Province_cn string
-	City_cn     string
-
+	IP    string
+	Port  string
 	mu    sync.RWMutex
 	count int
 }
@@ -61,7 +55,7 @@ type IPPool struct {
 	Min      int
 	Max      int
 	IPCount  int
-	OrderID  string
+	ApiAddr  string
 	Interval string
 
 	cron  *cron.Cron
@@ -74,8 +68,7 @@ func (pool *IPPool) PutIP() {
 		return
 	}
 
-	apiAddr := fmt.Sprintf(apiTpl, pool.OrderID, pool.IPCount)
-	resp, err := http.Get(apiAddr)
+	resp, err := http.Get(pool.ApiAddr)
 	if err != nil {
 		logrus.Errorln(err)
 		return
@@ -89,15 +82,15 @@ func (pool *IPPool) PutIP() {
 	}
 
 	var ips []IP
-	err = jsoniter.Unmarshal(b, &ips)
+	jsoniter.UnmarshalFromString(jsoniter.Get(b, "msg").ToString(), &ips)
 	if err != nil {
 		logrus.Errorln(err)
 		return
 	}
 	for _, ip := range ips {
-		logrus.Infof("Pool put ip: %s", ip.Host)
+		logrus.Infof("Pool put ip: %s", ip.IP)
 
-		proxyAddr := fmt.Sprintf("http://%s:%s", ip.Host, ip.Port)
+		proxyAddr := fmt.Sprintf("http://%s:%s", ip.IP, ip.Port)
 
 		p := func(_ *http.Request) (*url.URL, error) {
 			return url.Parse(proxyAddr)
@@ -111,9 +104,9 @@ func (pool *IPPool) PutIP() {
 		req, _ := http.NewRequest("GET", "https://www.baidu.com", nil)
 		_, err := client.Do(req)
 		if err != nil {
-			log.Warnf("IP [%s] unavailable, skip!", ip.Host)
+			log.Warnf("IP [%s] unavailable, skip!", ip.IP)
 		} else {
-			pool.cache.Set(ip.Host, ip, 3*time.Minute)
+			pool.cache.Set(ip.IP, ip, 3*time.Minute)
 		}
 	}
 
@@ -148,17 +141,12 @@ func (pool *IPPool) WaitReady() chan int {
 }
 
 func (pool *IPPool) Start() error {
-	if pool.OrderID == "" {
-		return errors.New("ip pool order id is blank")
-	}
+
 	if pool.Min == 0 {
 		pool.Min = 20
 	}
 	if pool.Max == 0 {
 		pool.Max = 30
-	}
-	if pool.IPCount == 0 {
-		pool.IPCount = 10
 	}
 	if pool.Interval == "" {
 		pool.Interval = "10s"

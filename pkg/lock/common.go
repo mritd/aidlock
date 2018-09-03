@@ -18,7 +18,6 @@ const (
 	AcceptEncoding = ""
 	AcceptLanguage = "zh-CN,zh;q=0.9,en;q=0.8"
 	AcceptJSON     = "application/json, text/javascript, */*; q=0.01"
-	AcceptHTML     = "text/html;format=fragmented"
 	ContentType    = "application/json"
 )
 

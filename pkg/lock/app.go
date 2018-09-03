@@ -62,8 +62,8 @@ func Boot() {
 					logrus.Errorf("Apple lock failed: %s", err)
 					return
 				}
-				logrus.Infof("Lock apple id [%s] use IP: %s", appleIDs[x].ID, ip.Host)
-				proxyAddr := fmt.Sprintf("http://%s:%s", ip.Host, ip.Port)
+				logrus.Infof("Lock apple id [%s] use IP: %s", appleIDs[x].ID, ip.IP)
+				proxyAddr := fmt.Sprintf("http://%s:%s", ip.IP, ip.Port)
 
 				p := func(_ *http.Request) (*url.URL, error) {
 					return url.Parse(proxyAddr)
