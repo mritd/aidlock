@@ -42,7 +42,6 @@ func (ip *IP) Check() bool {
 
 func (ip *IP) CheckAndUse() bool {
 
-	logrus.Infof("Check IP: %s", ip.IP)
 	ip.mu.Lock()
 	defer ip.mu.Unlock()
 	if ip.count < 5 {
