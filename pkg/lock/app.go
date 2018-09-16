@@ -55,6 +55,8 @@ func Boot() {
 
 			for i := 0; i < 20; i++ {
 
+			Retry:
+
 				jar, _ := cookiejar.New(nil)
 
 				ip, err := pool.GetIP()
@@ -75,8 +77,11 @@ func Boot() {
 					Jar:       jar,
 					Transport: transport,
 				}
-				if appleIDs[x].Lock(client) {
+				if err := appleIDs[x].Lock(client); err == nil {
 					break
+				} else {
+					pool.cache.Delete(ip.IP)
+					goto Retry
 				}
 			}
 			if appleIDs[x].State {

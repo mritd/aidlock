@@ -41,9 +41,11 @@ func (ip *IP) Check() bool {
 }
 
 func (ip *IP) CheckAndUse() bool {
+
+	logrus.Infof("Check IP: %s", ip.IP)
 	ip.mu.Lock()
 	defer ip.mu.Unlock()
-	if ip.count < 3 {
+	if ip.count < 5 {
 		ip.count++
 		return true
 	} else {
@@ -64,7 +66,7 @@ type IPPool struct {
 
 func (pool *IPPool) PutIP() {
 
-	if pool.cache.ItemCount() >= pool.Max {
+	if len(pool.cache.Items()) >= pool.Max {
 		return
 	}
 
@@ -80,6 +82,9 @@ func (pool *IPPool) PutIP() {
 		logrus.Errorln(err)
 		return
 	}
+
+	// clean expired ip
+	pool.cache.DeleteExpired()
 
 	var ips []IP
 	jsoniter.UnmarshalFromString(jsoniter.Get(b, "msg").ToString(), &ips)
@@ -98,15 +103,15 @@ func (pool *IPPool) PutIP() {
 		transport := &http.Transport{Proxy: p}
 
 		client := &http.Client{
-			Timeout:   5 * time.Second,
+			Timeout:   3 * time.Second,
 			Transport: transport,
 		}
-		req, _ := http.NewRequest("GET", "https://www.baidu.com", nil)
+		req, _ := http.NewRequest("GET", "https://www.apple.com", nil)
 		_, err := client.Do(req)
 		if err != nil {
 			log.Warnf("IP [%s] unavailable, skip!", ip.IP)
 		} else {
-			pool.cache.Set(ip.IP, ip, 3*time.Minute)
+			pool.cache.Set(ip.IP, ip, 30*time.Second)
 		}
 	}
 
@@ -118,6 +123,8 @@ func (pool *IPPool) GetIP() (*IP, error) {
 		ip := it.Object.(IP)
 		if ip.CheckAndUse() {
 			return &ip, nil
+		} else {
+			pool.cache.Delete(ip.IP)
 		}
 	}
 
